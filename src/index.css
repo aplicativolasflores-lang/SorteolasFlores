@@ -1,0 +1,68 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-display: 'Times New Roman', Times, serif;
+  --font-body: 'Times New Roman', Times, serif;
+
+  --color-brand-bg: #f3ecdd;
+  --color-brand-card: #faf7ef;
+  --color-brand-card2: #eee4d1;
+  --color-brand-gold: #a9253d;
+  --color-brand-gold-light: #c34258;
+  --color-brand-gold-dim: #8f1f33;
+  --color-brand-button-text: #fffaf7;
+  --color-brand-cream: #18352b;
+  --color-brand-muted: #756b5b;
+  --color-brand-border: #d8cbb6;
+  --color-brand-error: #e85547;
+  --color-brand-success: #47e882;
+
+  --color-admin-bg: #f8f6f1;
+  --color-admin-card: #ffffff;
+  --color-admin-sidebar: #1a100d;
+  --color-admin-text: #1a100d;
+  --color-admin-muted: #8a7a6a;
+  --color-admin-border: #e8e0d8;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(232, 197, 71, 0.3); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(232, 197, 71, 0.6); }
+
+.font-display { font-family: var(--font-display); }
+.font-body { font-family: var(--font-body); }
+
+.brand-script {
+  font-family: 'Times New Roman', Times, serif;
+  font-weight: 400;
+  letter-spacing: -0.08em;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 197, 71, 0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(232, 197, 71, 0); }
+}
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes confetti-fall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(60px) rotate(360deg); opacity: 0; }
+}
+
+.animate-fade-in { animation: fadeIn 0.4s ease forwards; }
+.animate-pulse-gold { animation: pulse-gold 2s infinite; }
+.animate-spin-slow { animation: spin-slow 3s linear infinite; }

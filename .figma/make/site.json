@@ -1,0 +1,10 @@
+{
+  "description": "Enables restaurant customers to enter daily location-verified prize draws via QR code while providing admins with tools to manage participants and winners.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
