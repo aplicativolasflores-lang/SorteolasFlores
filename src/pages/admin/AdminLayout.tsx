@@ -51,7 +51,7 @@ export default function AdminLayout({ onExit }: { onExit: () => void }) {
         {/* Brand */}
         <div className="px-5 py-6 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex items-center justify-center">
-              <BrandWordmark inverse compact />
+              <BrandWordmark compact />
           </div>
         </div>
 
