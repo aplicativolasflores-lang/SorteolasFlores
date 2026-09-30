@@ -41,7 +41,7 @@ export default function AdminParticipantes() {
       setLoadError('');
       const [participantsResult, rafflesResult] = await Promise.all([
         supabase.from('participantes').select('id, nombres, apellidos, telefono, ciudad, participacion_fecha, created_at, sorteo_id, estado').order('created_at', { ascending: false }),
-        supabase.from('sorteos').select('id, nombre'),
+        supabase.from('sorteos').select('id, nombre').order('created_at', { ascending: false }),
       ]);
 
       if (cancelled) return;
@@ -100,7 +100,7 @@ export default function AdminParticipantes() {
           style={{ background: 'var(--color-admin-card)', border: '1px solid var(--color-admin-border)', color: 'var(--color-admin-text)', fontFamily: 'var(--font-body)' }}
         >
           <option value="all">Todos los sorteos</option>
-          {SORTEOS.map((s) => <option key={s.id} value={s.id}>{raffleNames[s.id] ?? s.nombre}</option>)}
+          {Object.entries(raffleNames).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
         </select>
         <input
           type="date"

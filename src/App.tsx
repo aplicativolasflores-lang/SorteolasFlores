@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import ParticipationPage from './pages/customer/ParticipationPage';
 import AdminLayout from './pages/admin/AdminLayout';
 import TermsPage from './pages/legal/TermsPage';
 import PrivacyPage from './pages/legal/PrivacyPage';
+import SorteoPublico from './pages/customer/SorteoPublico';
 import { supabase } from './lib/supabase';
 
 type View = 'customer' | 'admin' | 'terms' | 'privacy';
@@ -10,22 +10,16 @@ type View = 'customer' | 'admin' | 'terms' | 'privacy';
 export default function App() {
   const [view, setView] = useState<View>('customer');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
-  const [adminEmail, setAdminEmail] = useState('');
+  const [adminEmail, setAdminEmail] = useState('Sorteo@gmail.com');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminLoginError, setAdminLoginError] = useState('');
   const [adminLoginLoading, setAdminLoginLoading] = useState(false);
+  const publicSorteoSlug = window.location.pathname.match(/^\/sorteo\/([^/]+)\/?$/)?.[1];
 
   async function handleAdminLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!supabase) {
-      if (adminPassword === 'Sorteo2026') {
-        setShowAdminLogin(false);
-        setAdminPassword('');
-        setAdminLoginError('');
-        setView('admin');
-      } else {
-        setAdminLoginError('Contraseña incorrecta.');
-      }
+      setAdminLoginError('Configura Supabase Auth para habilitar el acceso administrativo.');
       return;
     }
 
@@ -35,7 +29,6 @@ export default function App() {
 
     if (!error && data.user.app_metadata.role === 'admin') {
       setShowAdminLogin(false);
-      setAdminEmail('');
       setAdminPassword('');
       setView('admin');
       setAdminLoginLoading(false);
@@ -51,8 +44,8 @@ export default function App() {
     <>
       {view === 'customer' && (
         <div className="relative">
-          <ParticipationPage onOpenLegal={(type) => setView(type)} />
-          <button
+          <SorteoPublico slug={publicSorteoSlug ? decodeURIComponent(publicSorteoSlug) : null} onOpenLegal={(type) => setView(type)} />
+          {!publicSorteoSlug && <button
             onClick={() => { setShowAdminLogin(true); setAdminLoginError(''); }}
             aria-label="Abrir panel de administración"
             title="Panel de administración"
@@ -64,7 +57,7 @@ export default function App() {
               <path d="M8 10V7a4 4 0 0 1 8 0v3" />
               <circle cx="12" cy="15" r="1" fill="currentColor" stroke="none" />
             </svg>
-          </button>
+          </button>}
           {showAdminLogin && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4" role="presentation" onClick={() => setShowAdminLogin(false)}>
               <form
@@ -74,7 +67,7 @@ export default function App() {
                 style={{ background: 'var(--color-brand-card)', border: '1px solid var(--color-brand-border)' }}
               >
                 <h2 className="font-display mb-2 text-xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-brand-cream)' }}>Acceso administrativo</h2>
-                <p className="mb-4 text-sm" style={{ color: 'var(--color-brand-muted)' }}>{supabase ? 'Ingresa tus credenciales de administrador.' : 'Modo local: los registros se guardan solo en este navegador.'}</p>
+                <p className="mb-4 text-sm" style={{ color: 'var(--color-brand-muted)' }}>{supabase ? 'Ingresa tus credenciales de administrador.' : 'Configura Supabase para habilitar el acceso seguro al panel.'}</p>
                 {supabase && <input
                   autoComplete="username"
                   type="email"
@@ -85,7 +78,7 @@ export default function App() {
                   className="mb-2 w-full rounded-xl px-4 py-3 text-sm outline-none"
                   style={{ background: 'var(--color-brand-bg)', border: `1px solid ${adminLoginError ? 'var(--color-brand-error)' : 'var(--color-brand-border)'}`, color: 'var(--color-brand-cream)' }}
                 />}
-                <input
+                {supabase && <input
                   autoFocus
                   autoComplete="current-password"
                   type="password"
@@ -95,11 +88,11 @@ export default function App() {
                   required
                   className="mb-2 w-full rounded-xl px-4 py-3 text-sm outline-none"
                   style={{ background: 'var(--color-brand-bg)', border: `1px solid ${adminLoginError ? 'var(--color-brand-error)' : 'var(--color-brand-border)'}`, color: 'var(--color-brand-cream)' }}
-                />
+                />}
                 {adminLoginError && <p className="mb-3 text-xs" style={{ color: 'var(--color-brand-error)' }}>{adminLoginError}</p>}
                 <div className="flex gap-3 pt-2">
                   <button type="button" onClick={() => setShowAdminLogin(false)} className="flex-1 rounded-xl px-4 py-3 text-sm" style={{ border: '1px solid var(--color-brand-border)', color: 'var(--color-brand-muted)' }}>Cancelar</button>
-                  <button type="submit" disabled={adminLoginLoading} className="flex-1 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-60" style={{ background: 'var(--color-brand-gold)', color: 'var(--color-brand-button-text)' }}>{adminLoginLoading ? 'Ingresando...' : 'Ingresar'}</button>
+                  <button type="submit" disabled={adminLoginLoading || !supabase} className="flex-1 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-60" style={{ background: 'var(--color-brand-gold)', color: 'var(--color-brand-button-text)' }}>{adminLoginLoading ? 'Ingresando...' : 'Ingresar'}</button>
                 </div>
               </form>
             </div>

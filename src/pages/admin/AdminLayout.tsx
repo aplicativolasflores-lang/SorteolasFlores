@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { RESTAURANT } from '../../data/mockData';
 import floresLogo from '../../public/flores (1).png';
 import AdminDashboard from './Dashboard';
-import AdminSorteos from './Sorteos';
+import AdminSorteos from './SorteosAdmin';
 import AdminParticipantes from './Participantes';
 import AdminUbicacion from './Ubicacion';
 import AdminReportes from './Reportes';
@@ -66,9 +66,9 @@ export default function AdminLayout({ onExit }: { onExit: () => void }) {
                   onClick={() => { setActive(item.id); setSidebarOpen(false); }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all mb-0.5"
                   style={{
-                    background: active === item.id ? 'rgba(232,197,71,0.15)' : 'transparent',
-                    color: active === item.id ? 'var(--color-brand-gold)' : 'rgba(255,255,255,0.6)',
-                    borderLeft: active === item.id ? '2px solid var(--color-brand-gold)' : '2px solid transparent',
+                    background: active === item.id ? 'rgba(255,255,255,0.16)' : 'transparent',
+                    color: active === item.id ? '#ffffff' : 'rgba(255,255,255,0.8)',
+                    borderLeft: active === item.id ? '2px solid #e4f0e8' : '2px solid transparent',
                   }}
                 >
                   <span className="text-base w-5 text-center">{item.icon}</span>
@@ -111,7 +111,7 @@ export default function AdminLayout({ onExit }: { onExit: () => void }) {
           <div className="ml-auto flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <p className="text-xs font-medium" style={{ color: 'var(--color-admin-text)' }}>Administrador</p>
-              <p className="text-xs" style={{ color: 'var(--color-admin-muted)' }}>admin@laparrilladlchef.pe</p>
+              <p className="text-xs" style={{ color: 'var(--color-admin-muted)' }}>Sorteo@gmail.com</p>
             </div>
             <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: 'var(--color-brand-gold)', color: 'var(--color-brand-bg)' }}>A</div>
           </div>

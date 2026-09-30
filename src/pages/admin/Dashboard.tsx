@@ -1,104 +1,231 @@
-import { SORTEOS, PARTICIPANTES, PREMIOS, GANADORES } from '../../data/mockData';
+import { useCallback, useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
 
-function StatCard({ label, value, icon, sub, accent }: { label: string; value: string | number; icon: string; sub?: string; accent?: boolean }) {
-  return (
-    <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: 'var(--color-admin-card)', border: '1px solid var(--color-admin-border)' }}>
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium" style={{ color: 'var(--color-admin-muted)' }}>{label}</p>
-        <span className="text-xl">{icon}</span>
-      </div>
-      <p className="font-display text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: accent ? 'var(--color-brand-gold-dim)' : 'var(--color-admin-text)' }}>{value}</p>
-      {sub && <p className="text-xs" style={{ color: 'var(--color-admin-muted)' }}>{sub}</p>}
-    </div>
-  );
+type DashboardRaffle = {
+  id: string;
+  nombre: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  estado: 'activo' | 'pendiente' | 'finalizado';
+  participantes: Array<{ count: number }>;
+};
+
+type RecentParticipant = {
+  id: string;
+  nombres: string;
+  apellidos: string;
+  telefono: string;
+  ciudad: string;
+  created_at: string;
+  sorteo_id: string;
+  estado: 'activo' | 'ganador' | 'descalificado';
+};
+
+type ActivityDay = { date: string; count: number };
+
+type DashboardData = {
+  raffles: DashboardRaffle[];
+  recentParticipants: RecentParticipant[];
+  activity: ActivityDay[];
+  totalParticipants: number;
+  todayParticipants: number;
+  totalWinners: number;
+};
+
+const EMPTY_DATA: DashboardData = {
+  raffles: [],
+  recentParticipants: [],
+  activity: [],
+  totalParticipants: 0,
+  todayParticipants: 0,
+  totalWinners: 0,
+};
+
+function localDateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function formatDate(date: string) {
+  return new Date(`${date}T12:00:00`).toLocaleDateString('es-PE', {
+    day: '2-digit', month: 'short', year: 'numeric',
+  });
+}
+
+function raffleStatus(raffle: DashboardRaffle) {
+  if (raffle.estado === 'finalizado' || localDateKey(new Date()) > raffle.fecha_fin) return 'Finalizado';
+  if (raffle.estado === 'pendiente' || localDateKey(new Date()) < raffle.fecha_inicio) return 'Borrador';
+  return 'Publicado';
+}
+
+function statusColors(status: string) {
+  if (status === 'Publicado') return { background: 'rgba(85,117,104,0.12)', color: '#436556' };
+  if (status === 'Finalizado') return { background: 'rgba(117,107,91,0.12)', color: '#756b5b' };
+  return { background: 'rgba(169,132,63,0.12)', color: '#8b6b2d' };
 }
 
 export default function AdminDashboard() {
-  const today = new Date().toISOString().split('T')[0];
-  const todayCount = PARTICIPANTES.filter((p) => p.fecha === today).length;
-  const activeSorteo = SORTEOS.find((s) => s.estado === 'activo');
+  const [data, setData] = useState(EMPTY_DATA);
+  const [loading, setLoading] = useState(Boolean(supabase));
+  const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const last7: Record<string, number> = {};
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().split('T')[0];
-    last7[key] = PARTICIPANTES.filter((p) => p.fecha === key).length;
-  }
-  const maxBar = Math.max(...Object.values(last7), 1);
+  const loadDashboard = useCallback(async () => {
+    if (!supabase) {
+      setData(EMPTY_DATA);
+      setError('Conecta Supabase para consultar la información real del panel.');
+      setLoading(false);
+      return;
+    }
 
-  return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Participantes hoy" value={todayCount} icon="" sub="Registrados en el día" />
-        <StatCard label="Sorteo activo" value={activeSorteo?.nombre ?? '—'} icon="" sub={activeSorteo ? `${activeSorteo.participantes} participantes` : 'Sin sorteo'} />
-        <StatCard label="Total participantes" value={PARTICIPANTES.length} icon="" sub="Todos los sorteos" />
-        <StatCard label="Ganadores" value={GANADORES.length} icon="" sub="Histórico" accent />
+    setLoading(true);
+    setError('');
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).toISOString();
+
+    const [rafflesResult, participantCountResult, todayCountResult, winnersResult, recentResult, activityResult] = await Promise.all([
+      supabase.from('sorteos')
+        .select('id,nombre,fecha_inicio,fecha_fin,estado,participantes(count)')
+        .order('created_at', { ascending: false }),
+      supabase.from('participantes').select('id', { count: 'exact', head: true }),
+      supabase.from('participantes').select('id', { count: 'exact', head: true }).gte('created_at', todayStart),
+      supabase.from('ganadores').select('id', { count: 'exact', head: true }),
+      supabase.from('participantes')
+        .select('id,nombres,apellidos,telefono,ciudad,created_at,sorteo_id,estado')
+        .order('created_at', { ascending: false }).limit(8),
+      supabase.from('participantes').select('created_at').gte('created_at', weekStart),
+    ]);
+
+    const failed = [rafflesResult, participantCountResult, todayCountResult, winnersResult, recentResult, activityResult].some((result) => result.error);
+    if (failed) {
+      setError('No se pudieron cargar todos los datos. Verifica la sesión administradora y los permisos de Supabase.');
+    }
+
+    const raffleRows = rafflesResult.data ?? [];
+    const activityCounts = new Map<string, number>();
+    for (const participant of activityResult.data ?? []) {
+      const key = localDateKey(new Date(participant.created_at));
+      activityCounts.set(key, (activityCounts.get(key) ?? 0) + 1);
+    }
+    const activity: ActivityDay[] = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6 + index);
+      const key = localDateKey(date);
+      return { date: key, count: activityCounts.get(key) ?? 0 };
+    });
+
+    setData({
+      raffles: raffleRows as DashboardRaffle[],
+      recentParticipants: (recentResult.data ?? []) as RecentParticipant[],
+      activity,
+      totalParticipants: participantCountResult.count ?? 0,
+      todayParticipants: todayCountResult.count ?? 0,
+      totalWinners: winnersResult.count ?? 0,
+    });
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void loadDashboard();
+  }, [loadDashboard, reloadKey]);
+
+  const raffleNames = new Map(data.raffles.map((raffle) => [raffle.id, raffle.nombre]));
+  const maxActivity = Math.max(...data.activity.map((day) => day.count), 1);
+  const activeCount = data.raffles.filter((raffle) => raffleStatus(raffle) === 'Publicado').length;
+
+  return <div className="space-y-6 animate-fade-in">
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-admin-muted)' }}>Resumen operativo</p>
+        <p className="mt-1 text-sm" style={{ color: 'var(--color-admin-muted)' }}>{new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
       </div>
+      <button type="button" onClick={() => setReloadKey((key) => key + 1)} disabled={loading} className="rounded-lg border px-3 py-2 text-xs font-semibold transition hover:bg-white disabled:opacity-50" style={{ borderColor: 'var(--color-admin-border)', color: 'var(--color-admin-text)' }}>{loading ? 'Actualizando...' : 'Actualizar datos'}</button>
+    </div>
 
-      {/* Activity bar chart */}
-      <div className="rounded-2xl p-6" style={{ background: 'var(--color-admin-card)', border: '1px solid var(--color-admin-border)' }}>
-        <h3 className="font-display font-semibold text-base mb-6" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-admin-text)' }}>Participaciones — últimos 7 días</h3>
-        <div className="flex items-end gap-2 h-32">
-          {Object.entries(last7).map(([date, count]) => {
-            const isToday = date === today;
-            const height = count === 0 ? 4 : Math.max((count / maxBar) * 100, 8);
-            return (
-              <div key={date} className="flex-1 flex flex-col items-center gap-2">
-                <span className="text-xs font-medium" style={{ color: isToday ? 'var(--color-brand-gold-dim)' : 'var(--color-admin-muted)' }}>{count}</span>
-                <div
-                  className="w-full rounded-t-lg transition-all"
-                  style={{
-                    height: `${height}%`,
-                    background: isToday ? 'var(--color-brand-gold-dim)' : 'var(--color-admin-border)',
-                    minHeight: '4px',
-                  }}
-                />
-                <span className="text-xs" style={{ color: 'var(--color-admin-muted)' }}>
-                  {new Date(date + 'T12:00:00').toLocaleDateString('es', { weekday: 'short' })}
-                </span>
-              </div>
-            );
+    {error && <p role="alert" className="rounded-lg border px-4 py-3 text-sm" style={{ background: '#fff9f7', borderColor: '#edd5ce', color: 'var(--color-brand-error)' }}>{error}</p>}
+
+    <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <Metric label="Participantes hoy" value={loading ? '—' : data.todayParticipants} detail="Registros desde medianoche" />
+      <Metric label="Participantes totales" value={loading ? '—' : data.totalParticipants} detail="En todos los sorteos" />
+      <Metric label="Sorteos publicados" value={loading ? '—' : activeCount} detail={`${data.raffles.length} sorteos en total`} />
+      <Metric label="Ganadores" value={loading ? '—' : data.totalWinners} detail="Registros históricos" />
+    </section>
+
+    <section className="overflow-hidden rounded-xl border" style={{ background: 'var(--color-admin-card)', borderColor: 'var(--color-admin-border)' }}>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4" style={{ borderColor: 'var(--color-admin-border)' }}>
+        <div><h2 className="text-sm font-semibold" style={{ color: 'var(--color-admin-text)' }}>Todos los sorteos</h2><p className="mt-1 text-xs" style={{ color: 'var(--color-admin-muted)' }}>Listado completo de sorteos registrados en el sistema</p></div>
+        <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: 'var(--color-admin-bg)', color: 'var(--color-admin-muted)' }}>{data.raffles.length} en total</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[700px] text-sm">
+          <thead><tr style={{ background: 'var(--color-admin-bg)' }}>{['Sorteo', 'Estado', 'Vigencia', 'Participantes'].map((heading) => <th key={heading} className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--color-admin-muted)' }}>{heading}</th>)}</tr></thead>
+          <tbody>
+            {loading && <tr><td colSpan={4} className="px-5 py-9 text-center text-sm" style={{ color: 'var(--color-admin-muted)' }}>Cargando sorteos...</td></tr>}
+            {!loading && data.raffles.length === 0 && <tr><td colSpan={4} className="px-5 py-9 text-center text-sm" style={{ color: 'var(--color-admin-muted)' }}>No hay sorteos registrados.</td></tr>}
+            {!loading && data.raffles.map((raffle) => {
+              const status = raffleStatus(raffle);
+              const colors = statusColors(status);
+              const count = raffle.participantes?.[0]?.count ?? 0;
+              return <tr key={raffle.id} className="border-t" style={{ borderColor: 'var(--color-admin-border)' }}>
+                <td className="px-5 py-3.5 font-medium" style={{ color: 'var(--color-admin-text)' }}>{raffle.nombre}</td>
+                <td className="px-5 py-3.5"><span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={colors}>{status}</span></td>
+                <td className="px-5 py-3.5 whitespace-nowrap text-xs" style={{ color: 'var(--color-admin-muted)' }}>{formatDate(raffle.fecha_inicio)} – {formatDate(raffle.fecha_fin)}</td>
+                <td className="px-5 py-3.5 tabular-nums" style={{ color: 'var(--color-admin-text)' }}>{count}</td>
+              </tr>;
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+      <section className="rounded-xl border p-5" style={{ background: 'var(--color-admin-card)', borderColor: 'var(--color-admin-border)' }}>
+        <div className="mb-5"><h2 className="text-sm font-semibold" style={{ color: 'var(--color-admin-text)' }}>Actividad reciente</h2><p className="mt-1 text-xs" style={{ color: 'var(--color-admin-muted)' }}>Participaciones de los últimos 7 días</p></div>
+        <div className="grid grid-cols-7 items-end gap-2">
+          {data.activity.map((day) => {
+            const isToday = day.date === localDateKey(new Date());
+            const barHeight = day.count ? Math.max((day.count / maxActivity) * 82, 8) : 3;
+            return <div key={day.date} className="flex min-w-0 flex-col items-center gap-2">
+              <span className="text-[11px] tabular-nums" style={{ color: isToday ? 'var(--color-brand-gold-dim)' : 'var(--color-admin-muted)' }}>{day.count}</span>
+              <div className="flex h-[84px] w-full items-end"><div className="w-full rounded-t-sm" style={{ height: `${barHeight}px`, background: isToday ? 'var(--color-admin-sidebar)' : '#d9e2dc' }} /></div>
+              <span className="text-[10px] capitalize" style={{ color: 'var(--color-admin-muted)' }}>{new Date(`${day.date}T12:00:00`).toLocaleDateString('es-PE', { weekday: 'short' })}</span>
+            </div>;
           })}
         </div>
-      </div>
+      </section>
 
-      {/* Recent participants */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-admin-card)', border: '1px solid var(--color-admin-border)' }}>
-        <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-admin-border)' }}>
-          <h3 className="font-display font-semibold text-base" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-admin-text)' }}>Últimas participaciones</h3>
-        </div>
+      <section className="overflow-hidden rounded-xl border" style={{ background: 'var(--color-admin-card)', borderColor: 'var(--color-admin-border)' }}>
+        <div className="border-b px-5 py-4" style={{ borderColor: 'var(--color-admin-border)' }}><h2 className="text-sm font-semibold" style={{ color: 'var(--color-admin-text)' }}>Últimas participaciones</h2><p className="mt-1 text-xs" style={{ color: 'var(--color-admin-muted)' }}>Registros más recientes de todos los sorteos</p></div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ background: 'var(--color-admin-bg)' }}>
-                {['Nombre', 'DNI', 'Teléfono', 'Fecha', 'Estado'].map((h) => (
-                  <th key={h} className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-admin-muted)' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+          <table className="w-full min-w-[620px] text-sm">
+            <thead><tr style={{ background: 'var(--color-admin-bg)' }}>{['Participante', 'Sorteo', 'Fecha y hora', 'Estado'].map((heading) => <th key={heading} className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--color-admin-muted)' }}>{heading}</th>)}</tr></thead>
             <tbody>
-              {PARTICIPANTES.slice(0, 6).map((p, i) => (
-                <tr key={p.id} style={{ borderTop: i > 0 ? '1px solid var(--color-admin-border)' : undefined }}>
-                  <td className="px-6 py-3 font-medium" style={{ color: 'var(--color-admin-text)' }}>{p.nombres} {p.apellidos}</td>
-                  <td className="px-6 py-3" style={{ color: 'var(--color-admin-muted)' }}>{p.dni}</td>
-                  <td className="px-6 py-3" style={{ color: 'var(--color-admin-muted)' }}>{p.telefono}</td>
-                  <td className="px-6 py-3 text-xs" style={{ color: 'var(--color-admin-muted)' }}>{p.fecha} {p.hora}</td>
-                  <td className="px-6 py-3">
-                    <span className="px-2 py-1 rounded-full text-xs font-medium" style={{
-                      background: p.estado === 'ganador' ? 'rgba(232,197,71,0.15)' : 'rgba(71,232,130,0.12)',
-                      color: p.estado === 'ganador' ? 'var(--color-brand-gold-dim)' : '#2db86e',
-                    }}>
-                      {p.estado === 'ganador' ? 'Ganador' : 'Activo'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {loading && <tr><td colSpan={4} className="px-5 py-8 text-center text-sm" style={{ color: 'var(--color-admin-muted)' }}>Cargando participaciones...</td></tr>}
+              {!loading && data.recentParticipants.length === 0 && <tr><td colSpan={4} className="px-5 py-8 text-center text-sm" style={{ color: 'var(--color-admin-muted)' }}>Todavía no hay participaciones.</td></tr>}
+              {!loading && data.recentParticipants.map((participant) => {
+                const colors = participant.estado === 'ganador'
+                  ? { background: 'rgba(169,132,63,0.12)', color: '#8b6b2d' }
+                  : participant.estado === 'descalificado'
+                    ? { background: 'rgba(169,37,61,0.1)', color: 'var(--color-brand-error)' }
+                    : { background: 'rgba(85,117,104,0.12)', color: '#436556' };
+                return <tr key={participant.id} className="border-t" style={{ borderColor: 'var(--color-admin-border)' }}>
+                  <td className="px-5 py-3"><p className="font-medium" style={{ color: 'var(--color-admin-text)' }}>{participant.nombres} {participant.apellidos}</p><p className="mt-0.5 text-xs" style={{ color: 'var(--color-admin-muted)' }}>{participant.telefono} · {participant.ciudad}</p></td>
+                  <td className="px-5 py-3 text-xs" style={{ color: 'var(--color-admin-muted)' }}>{raffleNames.get(participant.sorteo_id) ?? 'Sorteo'}</td>
+                  <td className="px-5 py-3 whitespace-nowrap text-xs" style={{ color: 'var(--color-admin-muted)' }}>{new Date(participant.created_at).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                  <td className="px-5 py-3"><span className="rounded-full px-2 py-1 text-[10px] font-semibold" style={colors}>{participant.estado === 'ganador' ? 'Ganador' : participant.estado === 'descalificado' ? 'Descalificado' : 'Activo'}</span></td>
+                </tr>;
+              })}
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
     </div>
-  );
+  </div>;
+}
+
+function Metric({ label, value, detail }: { label: string; value: string | number; detail: string }) {
+  return <article className="rounded-xl border px-4 py-4 sm:px-5" style={{ background: 'var(--color-admin-card)', borderColor: 'var(--color-admin-border)' }}>
+    <p className="text-xs font-medium" style={{ color: 'var(--color-admin-muted)' }}>{label}</p>
+    <p className="mt-3 text-2xl font-semibold tabular-nums" style={{ color: 'var(--color-admin-text)' }}>{value}</p>
+    <p className="mt-1 text-[11px]" style={{ color: 'var(--color-admin-muted)' }}>{detail}</p>
+  </article>;
 }
