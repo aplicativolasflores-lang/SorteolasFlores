@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { RESTAURANT, SORTEOS, hasParticipatedToday, markParticipatedToday, saveLocalParticipant } from '../../data/mockData';
 import { supabase } from '../../lib/supabase';
-import floresLogo from '../../public/flores (1).png';
+import BrandWordmark from '../../components/BrandWordmark';
 
 type Step = 'alreadyparticipated' | 'form' | 'success';
 
@@ -132,12 +132,7 @@ export default function ParticipationPage({ onOpenLegal }: { onOpenLegal: (type:
       <header className="w-full border-b px-4 py-4" style={{ background: 'var(--color-brand-bg)', borderColor: 'var(--color-brand-border)' }}>
         <div className="mx-auto flex w-full max-w-6xl items-center justify-center">
           <div className="flex items-center justify-center gap-2 md:gap-3">
-            <img
-              src={floresLogo}
-              alt="Las Flores logo"
-              className="h-16 w-auto object-contain md:h-20"
-              draggable={false}
-            />
+            <BrandWordmark />
           </div>
         </div>
       </header>

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-
-const floresLogo = '/flores.png';
+import BrandWordmark from '../../components/BrandWordmark';
 
 type Pregunta = {
   id: string;
@@ -155,7 +154,7 @@ export default function SorteoPublico({ slug, onOpenLegal }: {
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-brand-bg)', color: 'var(--color-brand-cream)', fontFamily: 'var(--font-body)' }}>
       <header className="border-b px-4 py-3" style={{ borderColor: 'var(--color-brand-border)' }}>
-        <div className="mx-auto flex max-w-5xl justify-center"><img src={floresLogo} alt="Las Flores" className="h-14 w-auto object-contain" /></div>
+        <div className="mx-auto flex max-w-5xl justify-center"><BrandWordmark /></div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
         {loading ? <p className="py-24 text-center" style={{ color: 'var(--color-brand-muted)' }}>Cargando sorteo...</p> : !sorteo ? (

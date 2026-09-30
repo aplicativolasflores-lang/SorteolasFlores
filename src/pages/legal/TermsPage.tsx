@@ -1,4 +1,4 @@
-import floresLogo from '../../public/flores (1).png';
+import BrandWordmark from '../../components/BrandWordmark';
 
 type TermsPageProps = {
   onBack: () => void;
@@ -18,7 +18,7 @@ export default function TermsPage({ onBack }: TermsPageProps) {
             ← Volver
           </button>
           <div className="text-center">
-            <img src={floresLogo} alt="Las Flores" className="mx-auto h-14 w-auto object-contain md:h-16" draggable={false} />
+            <BrandWordmark />
           </div>
           <div style={{ width: 88 }} />
         </div>

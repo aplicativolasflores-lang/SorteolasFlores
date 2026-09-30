@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RESTAURANT } from '../../data/mockData';
-import floresLogo from '../../public/flores (1).png';
+import BrandWordmark from '../../components/BrandWordmark';
 import AdminDashboard from './Dashboard';
 import AdminSorteos from './SorteosAdmin';
 import AdminParticipantes from './Participantes';
@@ -51,7 +51,7 @@ export default function AdminLayout({ onExit }: { onExit: () => void }) {
         {/* Brand */}
         <div className="px-5 py-6 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex items-center justify-center">
-              <img src={floresLogo} alt="Las Flores" className="h-14 w-auto object-contain" draggable={false} />
+              <BrandWordmark inverse compact />
           </div>
         </div>
 
