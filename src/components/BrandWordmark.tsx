@@ -3,7 +3,7 @@ export default function BrandWordmark({ compact = false }: {
 }) {
   return (
     <img
-      src="/flores.png"
+      src="/flores.svg"
       alt="Logotipo Las Flores"
       className={compact ? 'h-11 w-auto object-contain' : 'h-14 w-auto object-contain'}
       draggable={false}
