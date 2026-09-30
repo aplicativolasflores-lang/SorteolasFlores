@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import floresLogo from '../../public/flores (1).png';
+
+const floresLogo = '/flores.png';
 
 type Pregunta = {
   id: string;
@@ -160,7 +161,7 @@ export default function SorteoPublico({ slug, onOpenLegal }: {
         {loading ? <p className="py-24 text-center" style={{ color: 'var(--color-brand-muted)' }}>Cargando sorteo...</p> : !sorteo ? (
           <section className="py-24 text-center">
             <h1 className="font-display text-3xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>Sorteo no disponible</h1>
-            <p className="mt-3 text-sm" style={{ color: 'var(--color-brand-muted)' }}>El enlace no existe o el sorteo está en borrador.</p>
+            <p className="mt-3 text-sm" style={{ color: 'var(--color-brand-muted)' }}>{supabase ? 'El enlace no existe o el sorteo está en borrador.' : 'Este sitio aún no tiene configurada la conexión con Supabase en Vercel.'}</p>
           </section>
         ) : success ? (
           <section className="mx-auto max-w-xl py-24 text-center">
